@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f766e">
+<title>Shop Manager Pro</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif}
+  body{background:#f1f5f9;color:#1e293b;padding-bottom:70px}
+  header{background:#0f766e;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+  header h1{font-size:18px}
+  .container{padding:14px;max-width:900px;margin:auto}
+  .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .card h2{font-size:16px;margin-bottom:10px;color:#0f766e}
+  input,select,button,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;margin-bottom:8px;background:#fff}
+  button{background:#0f766e;color:#fff;border:none;font-weight:600;cursor:pointer}
+  button.sec{background:#64748b}
+  button.danger{background:#dc2626}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid #e2e8f0}
+  th{background:#f8fafc;font-size:12px;color:#64748b}
+  .badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge.ok{background:#dcfce7;color:#166534}
+  .badge.low{background:#fef3c7;color:#92400e}
+  .badge.out{background:#fee2e2;color:#991b1b}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;display:flex;z-index:50}
+  nav button{flex:1;background:none;color:#64748b;border:none;padding:8px 0;font-size:10px;font-weight:600;margin:0;border-radius:0}
+  nav button.active{color:#0f766e;background:#f0fdfa}
+  nav button span{display:block;font-size:18px}
+  .page{display:none}
+  .page.active{display:block}
+  .stat{background:#fff;border-radius:12px;padding:12px;text-align:center}
+  .stat b{display:block;font-size:20px;color:#0f766e}
+  .stat small{color:#64748b;font-size:11px}
+  #scanVideo{width:100%;border-radius:10px;background:#000}
+  .suggest{position:relative}
+  .suggest-list{position:absolute;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:180px;overflow:auto;width:100%;z-index:20}
+  .suggest-list div{padding:8px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px}
+  .suggest-list div:hover{background:#f0fdfa}
+  .cart-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+  .qty-btn{width:28px;height:28px;padding:0;border-radius:6px;font-weight:700}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:100;opacity:0;transition:.3s}
+  .toast.show{opacity:1}
+  .msg-card{border-left:4px solid #f59e0b;background:#fffbeb}
+  .flex-between{display:flex;justify-content:space-between;align-items:center}
+  .small{font-size:11px;color:#64748b}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛒 Shop Manager Pro</h1>
+  <span id="clock" class="small" style="color:#fff"></span>
+</header>
+
+<div class="container">
+
+  <div id="page-dashboard" class="page active">
+    <div class="grid">
+      <div class="stat"><b id="sTodaySales">₹0</b><small>Today Sales</small></div>
+      <div class="stat"><b id="sTodayProfit">₹0</b><small>Today Profit</small></div>
+      <div class="stat"><b id="sMonthSales">₹0</b><small>Month Sales</small></div>
+      <div class="stat"><b id="sMonthProfit">₹0</b><small>Month Profit</small></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>⚠️ Low Stock Alerts</h2>
+      <div id="lowStockList" class="small">All good ✅</div>
+    </div>
+    <div class="card">
+      <h2>📨 Incoming Messages</h2>
+      <div id="msgInbox" class="small">No new messages</div>
+    </div>
+  </div>
+
+  <div id="page-billing" class="page">
+    <div class="card">
+      <h2>🧾 New Bill</h2>
+      <div class="suggest">
+        <input id="itemSearch" placeholder="Search item / scan barcode" autocomplete="off">
+        <div id="suggestList" class="suggest-list" style="display:none"></div>
+      </div>
+      <div class="row">
+        <button class="sec" onclick="openScanner()">📷 Scan Barcode</button>
+        <button class="sec" onclick="showMsgOrders()">💬 Msg Orders</button>
+      </div>
+      <div id="cart"></div>
+      <div class="row" style="margin-top:10px">
+        <div><label class="small">Discount %</label><input id="discPct" type="number" value="0" oninput="calcBill()"></div>
+        <div><label class="small">Discount ₹</label><input id="discAmt" type="number" value="0" oninput="calcBill()"></div>
+      </div>
+      <div class="row">
+        <div><label class="small">GST %</label><input id="gstPct" type="number" value="0" oninput="calcBill()"></div>
+        <div><label class="small">Customer Name</label><input id="custName" placeholder="Name"></div>
+      </div>
+      <div class="row">
+        <div><label class="small">Phone</label><input id="custPhone" placeholder="Number"></div>
+        <div><label class="small">Payment</label><select id="payMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option></select></div>
+      </div>
+      <div class="card" style="background:#f0fdfa;margin:8px 0">
+        <div class="flex-between"><span>Subtotal</span><b id="subTotal">₹0</b></div>
+        <div class="flex-between"><span>Discount</span><b id="discShow" style="color:#dc2626">-₹0</b></div>
+        <div class="flex-between"><span>GST</span><b id="gstShow">+₹0</b></div>
+        <div class="flex-between" style="font-size:18px;margin-top:6px"><span>Total</span><b id="grandTotal">₹0</b></div>
+      </div>
+      <div class="row">
+        <button onclick="saveBill()">💾 Save & Print</button>
+        <button class="sec" onclick="window.print()">🖨️ Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-inventory" class="page">
+    <div class="card">
+      <h2>📦 Add / Edit Item</h2>
+      <input id="invId" type="hidden">
+      <div class="row">
+        <div><input id="invName" placeholder="Item name"></div>
+        <div><input id="invCode" placeholder="Barcode / Code"></div>
+      </div>
+      <div class="row">
+        <div><input id="invPrice" type="number" placeholder="Sell price ₹"></div>
+        <div><input id="invCost" type="number" placeholder="Cost price ₹"></div>
+      </div>
+      <div class="row">
+        <div><input id="invQty" type="number" placeholder="Stock qty"></div>
+        <div><input id="invLow" type="number" placeholder="Low alert at" value="5"></div>
+      </div>
+      <div class="row">
+        <div><input id="invGst" type="number" placeholder="GST %" value="0"></div>
+        <div><input id="invHsn" placeholder="HSN code"></div>
+      </div>
+      <button onclick="saveItem()">➕ Save Item</button>
+    </div>
+    <div class="card">
+      <h2>📋 Stock List</h2>
+      <input id="invSearch" placeholder="Search..." oninput="renderInventory()">
+      <table><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th></th></tr></thead><tbody id="invTable"></tbody></table>
+    </div>
+  </div>
+
+  <div id="page-customers" class="page">
+    <div class="card">
+      <h2>👥 Add Customer</h2>
+      <input id="cName" placeholder="Name">
+      <input id="cPhone" placeholder="Phone number">
+      <input id="cNote" placeholder="Note">
+      <button onclick="saveCustomer()">Save Customer</button>
+    </div>
+    <div class="card">
+      <h2>Customer List</h2>
+      <input id="cSearch" placeholder="Search..." oninput="renderCustomers()">
+      <table><thead><tr><th>Name</th><th>Phone</th><th>Orders</th><th></th></tr></thead><tbody id="custTable"></tbody></table>
+    </div>
+  </div>
+
+  <div id="page-reports" class="page">
+    <div class="card">
+      <h2>📊 Reports</h2>
+      <div class="grid">
+        <div class="stat"><b id="rMonthProfit">₹0</b><small>Month Profit</small></div>
+        <div class="stat"><b id="rYearProfit">₹0</b><small>Year Profit</small></div>
+      </div>
+      <div class="grid" style="margin-top:8px">
+        <div class="stat"><b id="rMonthGst">₹0</b><small>Month GST</small></div>
+        <div class="stat"><b id="rYearGst">₹0</b><small>Year GST</small></div>
+      </div>
+      <h2 style="margin-top:14px">Bill History</h2>
+      <table><thead><tr><th>Date</th><th>Customer</th><th>Total</th><th></th></tr></thead><tbody id="billTable"></tbody></table>
+    </div>
+  </div>
+
+  <div id="page-settings" class="page">
+    <div class="card">
+      <h2>⚙️ Shop Settings</h2>
+      <input id="setShopName" placeholder="Shop name">
+      <input id="setShopPhone" placeholder="Shop phone">
+      <input id="setShopAddr" placeholder="Address">
+      <input id="setShopGst" placeholder="GSTIN">
+      <div class="row">
+        <div><input id="setCurrency" placeholder="Currency" value="₹"></div>
+        <div><input id="setDefGst" type="number" placeholder="Default GST %" value="0"></div>
+      </div>
+      <button onclick="saveSettings()">Save Settings</button>
+    </div>
+    <div class="card">
+      <h2>🔔 Notifications</h2>
+      <label class="flex-between"><span>Enable</span><input type="checkbox" id="notifEnable" style="width:auto" onchange="toggleNotif(this.checked)"></label>
+      <label class="flex-between" style="margin-top:8px"><span>Low stock alerts</span><input type="checkbox" id="notifLow" checked style="width:auto"></label>
+      <label class="flex-between" style="margin-top:8px"><span>New message alerts</span><input type="checkbox" id="notifMsg" checked style="width:auto"></label>
+      <button class="sec" style="margin-top:10px" onclick="testNotif()">Test Notification</button>
+    </div>
+    <div class="card">
+      <h2>💬 Message Webhook</h2>
+      <p class="small">Point WhatsApp/SMS gateway to this URL. Messages auto-load into cart.</p>
+      <input readonly id="webhookUrl">
+      <button class="sec" onclick="copyWebhook()">Copy URL</button>
+    </div>
+    <div class="card">
+      <h2>💾 Backup</h2>
+      <div class="row">
+        <button class="sec" onclick="exportData()">⬇️ Export</button>
+        <button class="danger" onclick="if(confirm('Erase all data?')){localStorage.clear();location.reload()}">🗑️ Reset</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="scannerModal" style="display:none;position:fixed;inset:0;background:#000;z-index:200;padding:14px">
+  <div style="color:#fff;display:flex;justify-content:space-between;margin-bottom:10px">
+    <b>Scan Barcode</b><button style="width:auto;padding:4px 12px;margin:0" onclick="closeScanner()">✕</button>
+  </div>
+  <video id="scanVideo" playsinline></video>
+</div>
+
+<div id="msgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;padding:20px;overflow:auto">
+  <div class="card" style="max-width:500px;margin:auto">
+    <div class="flex-between"><b>Message Orders</b><button style="width:auto;padding:4px 12px;margin:0" class="sec" onclick="document.getElementById('msgModal').style.display='none'">✕</button></div>
+    <div id="msgList" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<nav>
+  <button data-p="dashboard" class="active" onclick="nav('dashboard')"><span>📊</span>Home</button>
+  <button data-p="billing" onclick="nav('billing')"><span>🧾</span>Bill</button>
+  <button data-p="inventory" onclick="nav('inventory')"><span>📦</span>Stock</button>
+  <button data-p="customers" onclick="nav('customers')"><span>👥</span>People</button>
+  <button data-p="reports" onclick="nav('reports')"><span>📈</span>Reports</button>
+  <button data-p="settings" onclick="nav('settings')"><span>⚙️</span>More</button>
+</nav>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script>
+let items=JSON.parse(localStorage.getItem('shop_items')||'[]');
+let customers=JSON.parse(localStorage.getItem('shop_customers')||'[]');
+let bills=JSON.parse(localStorage.getItem('shop_bills')||'[]');
+let messages=JSON.parse(localStorage.getItem('shop_messages')||'[]');
+let settings=JSON.parse(localStorage.getItem('shop_settings')||'{"shop":"My Shop","phone":"","addr":"","gstin":"","cur":"₹","defGst":0}');
+let cart=[];let currency=settings.cur||'₹';
+
+function save(){localStorage.setItem('shop_items',JSON.stringify(items));localStorage.setItem('shop_customers',JSON.stringify(customers));localStorage.setItem('shop_bills',JSON.stringify(bills));localStorage.setItem('shop_messages',JSON.stringify(messages));localStorage.setItem('shop_settings',JSON.stringify(settings));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function v(id){return document.getElementById(id).value;}
+function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById('page-'+p).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===p));if(p==='dashboard')renderDashboard();if(p==='inventory')renderInventory();if(p==='customers')renderCustomers();if(p==='reports')renderReports();if(p==='settings')loadSettings();}
+
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});},1000);
+
+function saveItem(){const name=v('invName'),code=v('invCode'),price=+v('invPrice')||0,cost=+v('invCost')||0,qty=+v('invQty')||0,low=+v('invLow')||5,gst=+v('invGst')||0,hsn=v('invHsn')||'';if(!name)return toast('Enter name');const id=v('invId');if(id){const it=items.find(i=>i.id==id);Object.assign(it,{name,code,price,cost,qty,low,gst,hsn});toast('Updated');}else{items.push({id:Date.now(),name,code,price,cost,qty,low,gst,hsn});toast('Added');}['invId','invName','invCode','invPrice','invCost','invQty','invGst','invHsn'].forEach(i=>document.getElementById(i).value='');document.getElementById('invLow').value=5;save();renderInventory();checkLowStock();}
+function editItem(id){const it=items.find(i=>i.id==id);document.getElementById('invId').value=it.id;document.getElementById('invName').value=it.name;document.getElementById('invCode').value=it.code||'';document.getElementById('invPrice').value=it.price;document.getElementById('invCost').value=it.cost;document.getElementById('invQty').value=it.qty;document.getElementById('invLow').value=it.low;document.getElementById('invGst').value=it.gst||0;document.getElementById('invHsn').value=it.hsn||'';nav('inventory');}
+function delItem(id){if(!confirm('Delete?'))return;items=items.filter(i=>i.id!=id);save();renderInventory();}
+function renderInventory(){const q=(v('invSearch')||'').toLowerCase();document.getElementById('invTable').innerHTML=items.filter(i=>(i.name+i.code).toLowerCase().includes(q)).map(i=>{const s=i.qty<=0?'out':(i.qty<=i.low?'low':'ok');const lbl=i.qty<=0?'OUT':(i.qty<=i.low?'LOW':'OK');return `<tr><td>${i.name}<br><small class="small">${i.code||''}${i.gst?' | GST '+i.gst+'%':''}</small></td><td>${currency}${i.price}</td><td><span class="badge ${s}">${i.qty} ${lbl}</span></td><td><button style="width:auto;padding:4px 8px;font-size:11px;margin:0" onclick="editItem(${i.id})">✏️</button><button style="width:auto;padding:4px 8px;font-size:11px;margin:0;margin-left:4px" class="danger" onclick="delItem(${i.id})">🗑️</button></td></tr>`;}).join('')||'<tr><td colspan="4" class="small">No items yet</td></tr>';}
+
+function searchItem(q){const sl=document.getElementById('suggestList');if(!q){sl.style.display='none';return;}const found=items.filter(i=>(i.name+i.code).toLowerCase().includes(q.toLowerCase())).slice(0,8);if(!found.length){sl.style.display='none';return;}sl.innerHTML=found.map(i=>`<div onclick="addToCart(${i.id})">${i.name} — ${currency}${i.price} <small>(${i.qty} left)</small></div>`).join('');sl.style.display='block';}
+function addToCart(id){const it=items.find(i=>i.id==id);if(!it)return;if(it.qty<=0){toast('Out of stock');return;}const ex=cart.find(c=>c.id===id);if(ex){if(ex.qty<it.qty)ex.qty++;else toast('Max stock');}else cart.push({id,qty:1});document.getElementById('suggestList').style.display='none';document.getElementById('itemSearch').value='';renderCart();calcBill();}
+function renderCart(){const el=document.getElementById('cart');if(!cart.length){el.innerHTML='<p class="small">No items</p>';return;}el.innerHTML=cart.map((c,idx)=>{const it=items.find(i=>i.id===c.id);return `<div class="cart-item"><div><b>${it.name}</b><br><small class="small">${currency}${it.price} × ${c.qty}</small></div><div style="display:flex;gap:4px;align-items:center"><button class="qty-btn sec" onclick="changeQty(${idx},-1)">−</button><span>${c.qty}</span><button class="qty-btn" onclick="changeQty(${idx},1)">+</button><button class="qty-btn danger" onclick="removeCart(${idx})">✕</button></div></div>`;}).join('');}
+function changeQty(i,d){const c=cart[i];const it=items.find(x=>x.id===c.id);c.qty+=d;if(c.qty<=0)cart.splice(i,1);else if(c.qty>it.qty){c.qty=it.qty;toast('Max');}renderCart();calcBill();}
+function removeCart(i){cart.splice(i,1);renderCart();calcBill();}
+function calcBill(){const sub=cart.reduce((s,c)=>{const it=items.find(i=>i.id===c.id);return s+it.price*c.qty;},0);const pct=+v('discPct')||0,amt=+v('discAmt')||0,gstPct=+v('gstPct')||0;const disc=sub*(pct/100)+amt;const taxable=Math.max(0,sub-disc);const gst=taxable*(gstPct/100);const total=taxable+gst;document.getElementById('subTotal').textContent=currency+sub.toFixed(2);document.getElementById('discShow').textContent='-'+currency+disc.toFixed(2);document.getElementById('gstShow').textContent='+'+currency+gst.toFixed(2);document.getElementById('grandTotal').textContent=currency+total.toFixed(2);return{sub,disc,taxable,gst,total,pct,amt,gstPct};}
+function saveBill(){if(!cart.length)return toast('Add items');const name=v('custName')||'Walk-in',phone=v('custPhone')||'',pay=v('payMode');const{sub,disc,taxable,gst,total,pct,amt,gstPct}=calcBill();const profit=cart.reduce((p,c)=>{const it=items.find(i=>i.id===c.id);return p+(it.price-it.cost)*c.qty;},0)-disc;const bill={id:Date.now(),date:new Date().toISOString(),items:cart.map(c=>{const it=items.find(i=>i.id===c.id);return{id:c.id,name:it.name,qty:c.qty,price:it.price,cost:it.cost,gst:it.gst||0,hsn:it.hsn||''};}),sub,disc,taxable,gst,total,profit,pct,amt,gstPct,pay,cust:name,phone};cart.forEach(c=>{const it=items.find(i=>i.id===c.id);it.qty-=c.qty;});bills.push(bill);if(phone&&!customers.find(c=>c.phone===phone))customers.push({id:Date.now(),name,phone,note:''});save();cart=[];renderCart();['custName','custPhone','discPct','discAmt','gstPct'].forEach(f=>document.getElementById(f).value='');calcBill();toast('Saved!');printBill(bill);checkLowStock();renderDashboard();}
+function printBill(b){const win=window.open('','_blank');win.document.write(`<html><head><title>Bill</title><style>body{font-family:monospace;padding:10px;max-width:300px;margin:auto}table{width:100%;font-size:12px}td{padding:2px 0}h3{text-align:center;margin:4px 0}.line{border-top:1px dashed #000;margin:6px 0}.center{text-align:center;font-size:11px}</style></head><body><h3>${settings.shop||'My Shop'}</h3><div class="center">${settings.addr||''}<br>${settings.phone||''}${settings.gstin?'<br>GSTIN: '+settings.gstin:''}</div><div class="line"></div><div style="font-size:11px">Date: ${new Date(b.date).toLocaleString()}<br>Customer: ${b.cust} ${b.phone?'('+b.phone+')':''}<br>Payment: ${b.pay||'Cash'}</div><div class="line"></div><table>${b.items.map(i=>`<tr><td>${i.name} ×${i.qty}${i.hsn?' HSN:'+i.hsn:''}</td><td style="text-align:right">${currency}${(i.price*i.qty).toFixed(2)}</td></tr>`).join('')}</table><div class="line"></div><table><tr><td>Subtotal</td><td style="text-align:right">${currency}${b.sub.toFixed(2)}</td></tr>${b.pct?`<tr
